@@ -271,12 +271,29 @@ def main(argv: Optional[List[str]] = None) -> int:
             manifest.save()
 
     write_index_csv(args.outdir, manifest)
+
+    # summary tallies, so it is obvious what actually came through
+    n_json = sum(1 for s in manifest.data.values() if s.get("json"))
+    n_photos = sum(len(s.get("photos_done", [])) for s in manifest.data.values())
+    n_tracks = sum(1 for s in manifest.data.values() if s.get("gpx") is True)
+    n_notrack = sum(1 for s in manifest.data.values()
+                    if s.get("gpx") == "unavailable")
+
     print(f"\nDone. Output in {os.path.abspath(args.outdir)}", file=sys.stderr)
-    if not token and not args.no_gpx:
-        print("Note: GPS tracks were skipped (not signed in). "
-              "See the README for how to include them.", file=sys.stderr)
+    print(f"  activities: {n_json}    photos: {n_photos}    "
+          f"tracks: {n_tracks}", file=sys.stderr)
+    if not args.no_gpx:
+        if not token:
+            print("  tracks were skipped (not signed in). See the README to "
+                  "include GPS tracks.", file=sys.stderr)
+        elif n_tracks == 0:
+            print("  no tracks downloaded — check that you are signed in to "
+                  "yamap.com in your browser.", file=sys.stderr)
+        elif n_notrack:
+            print(f"  ({n_notrack} activities had no recorded track.)",
+                  file=sys.stderr)
     if errors:
-        print(f"{errors} activities had errors (re-run to retry).",
+        print(f"  {errors} activities had errors (re-run to retry).",
               file=sys.stderr)
     return 1 if errors else 0
 
