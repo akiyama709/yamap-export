@@ -74,10 +74,18 @@ def _calorie(activity: dict) -> str:
 
 
 def slugify(text: str, maxlen: int = 40) -> str:
+    """Filesystem-safe folder name fragment, portable across macOS/Linux/Windows.
+
+    Replaces characters Windows forbids (``\\ / : * ? " < > |``), control
+    characters, and whitespace, then trims trailing dots/spaces which Windows
+    also disallows. A fullwidth colon (``：``) is left intact — it is a normal
+    character on every platform.
+    """
     text = (text or "").strip()
-    text = re.sub(r"[\s/\\:*?\"<>|]+", "_", text)
+    text = re.sub(r'[\x00-\x1f\s/\\:*?"<>|]+', "_", text)
     text = re.sub(r"_+", "_", text).strip("_")
-    return text[:maxlen] or "activity"
+    text = text[:maxlen].rstrip(" .")
+    return text or "activity"
 
 
 def photo_number(i: int, total: int) -> str:

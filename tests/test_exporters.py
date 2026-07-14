@@ -77,6 +77,19 @@ def test_slugify_and_filenames():
     assert photo_filename(0, 5) == "image01.jpg"
 
 
+def test_slugify_windows_safe():
+    # none of Windows' reserved characters survive
+    bad = slugify('a<b>c:d"e/f\\g|h?i*j')
+    for ch in '<>:"/\\|?*':
+        assert ch not in bad
+    # no trailing dot or space (Windows strips/rejects these)
+    assert not slugify("Mt. Fuji.").endswith((".", " "))
+    # fullwidth colon is fine and preserved
+    assert "：" in slugify("260713：山")
+    # never empty
+    assert slugify("///") == "activity"
+
+
 def test_rational_dms_roundtrip():
     d, m, s = _rational_dms(35.0599)
     approx = d[0] / d[1] + (m[0] / m[1]) / 60 + (s[0] / s[1]) / 3600
