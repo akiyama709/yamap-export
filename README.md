@@ -53,15 +53,15 @@ yamap-archive/
 Requires Python 3.9+.
 
 ```bash
-pip install git+https://github.com/akiyama-tomohiro/yamap-export
+pip install git+https://github.com/akiyama709/yamap-export
 # to read your login cookie automatically (for GPS tracks):
-pip install "yamap-export[browser] @ git+https://github.com/akiyama-tomohiro/yamap-export"
+pip install "yamap-export[browser] @ git+https://github.com/akiyama709/yamap-export"
 ```
 
 Or from a clone:
 
 ```bash
-git clone https://github.com/akiyama-tomohiro/yamap-export
+git clone https://github.com/akiyama709/yamap-export
 cd yamap-export
 pip install -e ".[browser]"
 ```
@@ -194,7 +194,7 @@ YAMAP への移行**に使えます。
 ### インストール・使い方
 
 ```bash
-pip install "yamap-export[browser] @ git+https://github.com/akiyama-tomohiro/yamap-export"
+pip install "yamap-export[browser] @ git+https://github.com/akiyama709/yamap-export"
 
 # アカウント全体（プロフィールURL https://yamap.com/users/<id> の id を指定）
 yamap-export https://yamap.com/users/2486399 -o ./my-yamap-archive

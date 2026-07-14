@@ -20,7 +20,7 @@ API_BASE = "https://api.yamap.com"
 # while still identifying this tool honestly.
 USER_AGENT = (
     "Mozilla/5.0 (compatible) "
-    "yamap-export/0.1 (+https://github.com/akiyama-tomohiro/yamap-export)"
+    "yamap-export/0.1 (+https://github.com/akiyama709/yamap-export)"
 )
 
 

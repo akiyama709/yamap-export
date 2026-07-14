@@ -28,8 +28,8 @@ dependencies = [
 browser = ["browser-cookie3>=0.19"]
 
 [project.urls]
-Homepage = "https://github.com/akiyama-tomohiro/yamap-export"
-Issues = "https://github.com/akiyama-tomohiro/yamap-export/issues"
+Homepage = "https://github.com/akiyama709/yamap-export"
+Issues = "https://github.com/akiyama709/yamap-export/issues"
 
 [project.scripts]
 yamap-export = "yamap_export.cli:main"
