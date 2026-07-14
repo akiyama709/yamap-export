@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+
+# Tool output / local archives
+yamap-archive/
+*.gpx
+manifest.json
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
