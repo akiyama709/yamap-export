@@ -108,11 +108,22 @@ def export_activity(client: YamapClient, activity_id: int, outdir: str,
             dest = os.path.join(adir, fname)
             if not force and i in done and os.path.exists(dest):
                 continue
-            try:
-                download_photo(img, dest, sess, tz)
-                done.add(i)
-            except (requests.RequestException, ValueError) as e:
-                tqdm.write(f"  photo {fname} of {activity_id} failed: {e}")
+            # Retry transient network hiccups (e.g. macOS ephemeral-port
+            # exhaustion, EADDRNOTAVAIL) rather than leaving a gap.
+            for attempt in range(3):
+                try:
+                    download_photo(img, dest, sess, tz)
+                    done.add(i)
+                    break
+                except ValueError as e:  # nothing to download
+                    tqdm.write(f"  photo {fname} of {activity_id}: {e}")
+                    break
+                except (requests.RequestException, OSError) as e:
+                    if attempt == 2:
+                        tqdm.write(f"  photo {fname} of {activity_id} failed "
+                                   f"after retries: {e}")
+                    else:
+                        time.sleep(1.0 * (attempt + 1))
             if photo_delay:
                 time.sleep(photo_delay)
         state["photos_done"] = sorted(done)
