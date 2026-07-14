@@ -1,0 +1,27 @@
+name: healthcheck
+
+# Runs the live-API health check on a schedule. YAMAP is an undocumented
+# target, so this catches a breakage (changed JSON, CDN, or User-Agent gate)
+# early. GitHub emails the repository owner automatically when a scheduled
+# workflow fails.
+
+on:
+  schedule:
+    # every Monday at 00:00 UTC (09:00 JST)
+    - cron: "0 0 * * 1"
+  workflow_dispatch: {}
+
+jobs:
+  healthcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+      - name: Probe the live YAMAP API
+        run: python scripts/healthcheck.py

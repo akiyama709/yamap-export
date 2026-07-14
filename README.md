@@ -151,6 +151,15 @@ prohibit overloading the service.
 
 ---
 
+## Staying working
+
+YAMAP is undocumented and can change without notice. `scripts/healthcheck.py`
+probes the live API and asserts the fields, CDN, and User-Agent behaviour the
+exporter relies on (exit 0 = healthy, 1 = needs an update). A scheduled
+[healthcheck workflow](.github/workflows/healthcheck.yml) runs it weekly so a
+breakage surfaces early. Set `YAMAP_TOKEN` to also exercise authenticated
+track download.
+
 ## How it works (and being a good citizen)
 
 - Reads YAMAP's public JSON endpoints (`api.yamap.com`) — the same data the
