@@ -96,6 +96,7 @@ Useful flags:
 | `--limit N` | export at most N activities |
 | `--delay` / `--photo-delay` | throttle (defaults 1.0s / 0.3s) |
 | `--force` | re-download even if already present |
+| `--verify` | check an existing archive for gaps instead of exporting |
 
 The photos and journal text are **public** and download without signing in.
 
@@ -119,6 +120,24 @@ If no token is found, the tool exports everything else and just skips tracks;
 re-run later with a token to fill them in (it won't re-download the rest).
 
 ---
+
+## Checking that the archive is complete
+
+A backup is only worth keeping if you can trust it. Downloads fail and runs
+get interrupted, so verify what landed on disk:
+
+```bash
+yamap-export --verify -o ./my-yamap-archive
+```
+
+It reads the saved API responses in `raw/` and compares them against the
+files, so the check is offline and costs YAMAP nothing. For every activity it
+confirms that each photo is present and not truncated, that the capture time
+and GPS position were written back into the EXIF, and that the GPS track is
+there. It reports only the activities with gaps (add `--show-all` for the full
+list) and exits non-zero if anything is missing, so it can be scripted. An
+absence YAMAP itself is responsible for — a photo it has no coordinate for, an
+activity with no recorded track — is reported as a note rather than a gap.
 
 ## Migrating to another service
 
@@ -220,6 +239,22 @@ yamap.com にサインインし `browser-cookie3` を入れておけば、`yamap
 **自動で読み取ります**（`YAMAP_TOKEN` 環境変数、`--token` 指定も可）。トークンは
 **自分の軌跡取得のためだけ**に使い、表示・保存・外部送信は一切しません。トークンが
 無ければ軌跡以外を書き出し、後から再実行して補完できます。
+
+### アーカイブが完全かを確かめる
+
+バックアップは信頼できてはじめて意味があります。通信は失敗しますし、途中で
+止まることもあるので、手元に何が残ったかを検査できます。
+
+```bash
+yamap-export --verify -o ./my-yamap-archive
+```
+
+`raw/` に保存した API 応答を基準にファイルと突き合わせるので、**オフラインで
+完結し、YAMAP に負荷をかけません**。活動ごとに、写真が全部あるか・途中で切れて
+いないか・EXIF に撮影日時と GPS が書き戻されているか・軌跡があるかを確認し、
+欠けのある活動だけを報告します（`--show-all` で全件表示）。欠けがあれば終了
+コード 1 を返すのでスクリプトからも使えます。なお YAMAP 側にそもそも座標が無い
+写真や、軌跡が記録されていない活動は、欠けではなく「note」として区別します。
 
 ### ヤマレコへの移行
 

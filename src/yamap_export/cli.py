@@ -29,6 +29,7 @@ from .exporters import (details_txt, flat_record, iso_date, markdown,
                         photo_filename, photos_txt, slugify, to_json)
 from .gpx import GpxUnavailable, download_gpx, has_track
 from .photos import download_photo
+from .verify import print_report, verify_archive
 
 
 # -- manifest (resume state) ----------------------------------------------
@@ -210,6 +211,12 @@ def build_parser() -> argparse.ArgumentParser:
                    help="export at most N activities (0 = all)")
     p.add_argument("--force", action="store_true",
                    help="re-download even if already present")
+
+    p.add_argument("--verify", action="store_true",
+                   help="check an existing archive for gaps instead of "
+                        "exporting (offline; costs YAMAP nothing)")
+    p.add_argument("--show-all", action="store_true",
+                   help="with --verify, list every activity, not just gaps")
     p.add_argument("--version", action="version",
                    version=f"yamap-export {__version__}")
     return p
@@ -229,6 +236,11 @@ def resolve_token_quietly(args) -> Optional[str]:
 
 def main(argv: Optional[List[str]] = None) -> int:
     args = build_parser().parse_args(argv)
+
+    if args.verify:
+        report = verify_archive(args.outdir)
+        print_report(report, show_all=args.show_all)
+        return 0 if report.ok else 1
 
     # figure out the work list
     activity_ids: List[int] = []
