@@ -2,14 +2,24 @@ name: healthcheck
 
 # Runs the live-API health check on a schedule. YAMAP is an undocumented
 # target, so this catches a breakage (changed JSON, CDN, or User-Agent gate)
-# early. GitHub emails the repository owner automatically when a scheduled
-# workflow fails.
+# early.
+#
+# The result is recorded in HEALTH.md and committed. That serves two purposes:
+# it shows anyone reading the repository when the tool was last verified
+# against the live API, and the commit counts as repository activity, which
+# stops GitHub from disabling this scheduled workflow after 60 days of
+# inactivity. To keep the history readable, the commit is only made when the
+# result changes or when the repository has been quiet for 30 days.
 
 on:
   schedule:
     # every Monday at 00:00 UTC (09:00 JST)
     - cron: "0 0 * * 1"
   workflow_dispatch: {}
+
+permissions:
+  contents: write
+  issues: write
 
 jobs:
   healthcheck:
@@ -23,5 +33,80 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e .
+
       - name: Probe the live YAMAP API
-        run: python scripts/healthcheck.py
+        id: probe
+        run: |
+          set +e
+          python scripts/healthcheck.py 2>&1 | tee /tmp/health.log
+          echo "status=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+
+      - name: Record the result
+        id: record
+        run: |
+          previous="$(grep -m1 '^Result:' HEALTH.md 2>/dev/null || true)"
+          if [ "${{ steps.probe.outputs.status }}" = "0" ]; then
+            result="Result: **healthy**"
+          else
+            result="Result: **BROKEN**"
+          fi
+          {
+            echo "# Health status"
+            echo
+            echo "$result"
+            echo
+            echo "Last checked: $(date -u '+%Y-%m-%d %H:%M UTC')"
+            echo
+            echo "\`scripts/healthcheck.py\` probes the live YAMAP API and asserts the"
+            echo "fields, image CDN, and User-Agent behaviour that the exporter depends"
+            echo "on. This file is written by the scheduled healthcheck workflow."
+            echo
+            echo '```'
+            cat /tmp/health.log
+            echo '```'
+          } > HEALTH.md
+          if [ "$previous" != "$result" ]; then
+            echo "commit=yes" >> "$GITHUB_OUTPUT"
+            echo "reason=result changed" >> "$GITHUB_OUTPUT"
+          elif [ $(( ( $(date +%s) - $(git log -1 --format=%ct) ) / 86400 )) -ge 30 ]; then
+            echo "commit=yes" >> "$GITHUB_OUTPUT"
+            echo "reason=keeping the scheduled workflow alive" >> "$GITHUB_OUTPUT"
+          else
+            echo "commit=no" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit the result
+        if: steps.record.outputs.commit == 'yes'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add HEALTH.md
+          git diff --staged --quiet || git commit -m "chore: health check $(date -u '+%Y-%m-%d') (${{ steps.record.outputs.reason }})"
+          git push
+
+      - name: Open an issue if broken
+        if: steps.probe.outputs.status != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          title="Health check failing: yamap-export may be broken"
+          existing="$(gh issue list --state open --search "in:title $title" --json number --jq '.[0].number // empty')"
+          {
+            echo "The scheduled health check failed, which usually means YAMAP changed"
+            echo "something the exporter depends on."
+            echo
+            echo "Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo
+            echo '```'
+            cat /tmp/health.log
+            echo '```'
+          } > /tmp/issue.md
+          if [ -z "$existing" ]; then
+            gh issue create --title "$title" --body-file /tmp/issue.md
+          else
+            gh issue comment "$existing" --body-file /tmp/issue.md
+          fi
+
+      - name: Fail the job if broken
+        if: steps.probe.outputs.status != '0'
+        run: exit 1

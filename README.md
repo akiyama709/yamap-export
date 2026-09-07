@@ -158,7 +158,9 @@ probes the live API and asserts the fields, CDN, and User-Agent behaviour the
 exporter relies on (exit 0 = healthy, 1 = needs an update). A scheduled
 [healthcheck workflow](.github/workflows/healthcheck.yml) runs it weekly so a
 breakage surfaces early. Set `YAMAP_TOKEN` to also exercise authenticated
-track download.
+track download. The latest result is recorded in [HEALTH.md](HEALTH.md),
+so you can see at a glance when the tool was last verified against the
+live API.
 
 ## How it works (and being a good citizen)
 
