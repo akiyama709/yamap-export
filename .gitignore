@@ -9,8 +9,14 @@ dist/
 venv/
 .pytest_cache/
 
-# Tool output / local archives
+# Tool output / local archives.
+# Exported activities contain your own photos with GPS EXIF, so never
+# commit them. These patterns cover the output directory names the
+# README suggests, plus the usual variations.
 yamap-archive/
+*-archive/
+*-export/
+*-backup/
 *.gpx
 manifest.json
 
