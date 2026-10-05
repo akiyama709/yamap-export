@@ -6,4 +6,4 @@ stored in your browser. It never uploads anything and never transmits your
 token anywhere except to api.yamap.com.
 """
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"

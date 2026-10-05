@@ -10,7 +10,7 @@ the right spot in Yamareco / Strava / etc.
 from __future__ import annotations
 
 import datetime as _dt
-from typing import Optional
+from typing import List, Optional
 
 import piexif
 import requests
@@ -18,18 +18,37 @@ import requests
 from .api import USER_AGENT
 
 
-def best_photo_url(image: dict) -> Optional[str]:
-    """Highest-quality URL YAMAP exposes for a photo.
+class PhotoUnavailable(RuntimeError):
+    """Raised when every published URL for a photo fails."""
 
-    ``base_url`` is the stored image that does not pass through the resizing
-    proxy; it is larger and sharper than ``url``. Fall back to the proxied
-    versions if it is absent.
-    """
-    for key in ("base_url", "url", "medium_url", "small_url"):
+
+# Photo URLs YAMAP publishes, largest first. ``base_url`` is the stored image
+# that does not pass through the resizing proxy, so it is the sharpest when it
+# is served at all; the rest come from the proxy at decreasing sizes. YAMAP has
+# turned the un-proxied path off before (it answered 503 for every image from
+# around October 2026), so never depend on a single one of these.
+PHOTO_URL_KEYS = ("base_url", "url", "medium_url", "small_url")
+
+
+def photo_url_candidates(image: dict) -> List[str]:
+    """Every URL for this photo, largest first, for use as a fallback chain."""
+    seen, out = set(), []
+    for key in PHOTO_URL_KEYS:
         u = image.get(key)
-        if u:
-            return u
-    return None
+        if u and u not in seen:
+            seen.add(u)
+            out.append(u)
+    return out
+
+
+def best_photo_url(image: dict) -> Optional[str]:
+    """The largest URL YAMAP publishes for a photo, or None.
+
+    This says nothing about whether that URL is currently being served; use
+    :func:`photo_url_candidates` and try them in order.
+    """
+    candidates = photo_url_candidates(image)
+    return candidates[0] if candidates else None
 
 
 def _rational_dms(deg: float):
@@ -81,16 +100,36 @@ def build_exif(image: dict, tz_hours: int) -> Optional[bytes]:
 
 def download_photo(image: dict, dest, session: requests.Session,
                    tz_hours: int, timeout: float = 60.0) -> None:
-    """Fetch one photo to ``dest`` (a path), restoring EXIF where possible."""
-    url = best_photo_url(image)
-    if not url:
+    """Fetch one photo to ``dest`` (a path), restoring EXIF where possible.
+
+    Tries each published URL from the largest down and keeps the first one the
+    CDN actually serves, so a size that YAMAP stops serving costs quality
+    rather than the photo.
+    """
+    candidates = photo_url_candidates(image)
+    if not candidates:
         raise ValueError("photo has no downloadable URL")
-    r = session.get(url, timeout=timeout,
-                    headers={"User-Agent": USER_AGENT})
-    r.raise_for_status()
+
+    last_error: Optional[Exception] = None
+    content = None
+    for url in candidates:
+        try:
+            r = session.get(url, timeout=timeout,
+                            headers={"User-Agent": USER_AGENT})
+            r.raise_for_status()
+        except requests.RequestException as e:
+            last_error = e
+            continue
+        content = r.content
+        break
+
+    if content is None:
+        raise PhotoUnavailable(
+            f"none of the {len(candidates)} published URLs could be fetched "
+            f"(last error: {last_error})")
 
     with open(dest, "wb") as fh:
-        fh.write(r.content)
+        fh.write(content)
 
     exif_bytes = build_exif(image, tz_hours)
     if exif_bytes:

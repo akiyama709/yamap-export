@@ -34,9 +34,9 @@ yamap-archive/
 
 ### Why this is better than exporting by hand
 
-- **Photos come out sharper.** YAMAP strips EXIF and the common extensions grab
-  a downscaled, quality-50 copy. This tool fetches the stored image
-  (`base_url`), which is larger and cleaner, and **writes EXIF back**: the
+- **Photos keep their EXIF.** YAMAP strips EXIF from the photos it stores. This
+  tool asks for the largest image YAMAP publishes, falls back through the
+  smaller sizes when one is not being served, and **writes EXIF back**: the
   capture time (to the second) and the **GPS latitude/longitude/altitude**. So
   when you import to Yamareco or Strava, the photos sort chronologically and
   land on the map automatically.
@@ -181,6 +181,14 @@ track download. The latest result is recorded in [HEALTH.md](HEALTH.md),
 so you can see at a glance when the tool was last verified against the
 live API.
 
+Since October 2026 YAMAP has answered 503 for the un-proxied original image
+path, so exports now receive the largest size its image proxy serves. The
+health check reports that as DEGRADED rather than broken, because the exporter
+falls back on its own. One consequence is worth knowing: re-running with
+`--force` over an archive made before that change replaces the sharper files
+with smaller ones. An ordinary re-run skips the photos it already has and
+leaves them alone.
+
 ## How it works (and being a good citizen)
 
 - Reads YAMAP's public JSON endpoints (`api.yamap.com`) — the same data the
@@ -213,10 +221,11 @@ YAMAP への移行**に使えます。
 
 ### 既存の手作業より優れている点
 
-- **写真が高品質。** YAMAP は EXIF を削除し、よくある拡張機能は縮小・低品質の
-  コピーを取りますが、本ツールは保存版（`base_url`）を取得し、**EXIF を書き戻し**
-  ます（撮影日時を秒精度で、**GPS の緯度・経度・標高**も）。だからヤマレコや Strava
-  に取り込むと、写真が時系列に並び、地図上へ自動配置されます。
+- **写真に EXIF を書き戻す。** YAMAP は保存した写真から EXIF を削除します。本ツールは
+  YAMAP が公開する中で最大の画像を要求し、それが配信されていなければ順に小さいサイズへ
+  切り替えたうえで、**EXIF を書き戻し**ます（撮影日時を秒精度で、**GPS の緯度・経度・
+  標高**も）。だからヤマレコや Strava に取り込むと、写真が時系列に並び、地図上へ自動
+  配置されます。
 - **1 セットで全サービス対応。** 時刻・標高つき GPX と EXIF つき JPEG は、ヤマレコ・
   Strava・Garmin・YAMAP のすべてが受け付ける共通形式です。一度書き出せばどこへでも。
 - **再開可能。** 写真 3 万枚でも大丈夫。いつ止めても、再実行すれば済んだ分は飛ばします。
@@ -266,6 +275,15 @@ yamap-export --verify -o ./my-yamap-archive
 コメントは順番どおり自動流し込み）、③`track.gpx` を GPS ログ欄にアップロード、という
 流れです。**自分の記録を、常識的なペースで**移行してください（ヤマレコ規約はサーバー
 への過負荷を禁じています）。
+
+### 写真の大きさについて（2026年10月の変更）
+
+2026年10月から、YAMAP は加工を経ない元画像のパスに 503 を返すようになりました。本ツールは
+自動で次に大きいサイズへ切り替えるので、エクスポートは止まりませんが、いま取得できるのは
+画像プロキシが配信する最大サイズです。ヘルスチェックはこれを「故障」ではなく「DEGRADED」
+として報告します。一点だけ注意があります。**この変更より前に作ったアーカイブに対して
+`--force` で再実行すると、より鮮明な写真が小さいものに置き換わります**。`--force` を付けない
+通常の再実行なら、取得済みの写真はそのまま残ります。
 
 ### ライセンス
 

@@ -25,7 +25,7 @@ import requests
 from yamap_export.api import USER_AGENT, YamapClient, YamapError
 from yamap_export.exporters import flat_record
 from yamap_export.gpx import download_gpx, GpxUnavailable
-from yamap_export.photos import best_photo_url
+from yamap_export.photos import photo_url_candidates
 
 # A stable, public activity to probe. Override with env vars if it ever goes
 # away.
@@ -94,19 +94,40 @@ def main() -> int:
 
     results.append(check("exporter transform", transform))
 
-    # 4. A photo URL still resolves on the CDN.
+    # 4. At least one published photo URL still resolves on the CDN.
+    #    The exporter walks these in order and keeps the first that is served,
+    #    so losing the largest costs quality, not the photo. Only an image with
+    #    no working URL at all is a breakage.
     def photo_cdn():
         act = state.get("activity")
         if not act or not act.get("images"):
             raise CheckFailed("no photos to check")
-        url = best_photo_url(act["images"][0])
-        r = requests.get(url, headers={"User-Agent": USER_AGENT},
-                         timeout=30, stream=True)
-        r.close()
-        ctype = r.headers.get("content-type", "")
-        if r.status_code != 200 or not ctype.startswith("image/"):
-            raise CheckFailed(f"HTTP {r.status_code}, content-type {ctype!r}")
-        return f"HTTP 200, {ctype}"
+        candidates = photo_url_candidates(act["images"][0])
+        if not candidates:
+            raise CheckFailed("the activity publishes no photo URL")
+
+        failures = []
+        for rank, url in enumerate(candidates):
+            try:
+                r = requests.get(url, headers={"User-Agent": USER_AGENT},
+                                 timeout=30, stream=True)
+                r.close()
+            except requests.RequestException as e:
+                failures.append(f"{type(e).__name__}")
+                continue
+            ctype = r.headers.get("content-type", "")
+            if r.status_code == 200 and ctype.startswith("image/"):
+                if rank == 0:
+                    return f"largest URL serving, {ctype}"
+                # Degraded but working: say so loudly without failing, so a
+                # real breakage still means something.
+                return (f"DEGRADED — the largest {rank} URL(s) are down "
+                        f"({', '.join(failures)}); falling back to a smaller "
+                        f"size, {ctype}")
+            failures.append(f"HTTP {r.status_code}")
+
+        raise CheckFailed(
+            f"no photo URL is being served ({', '.join(failures)})")
 
     results.append(check("photo CDN", photo_cdn))
 

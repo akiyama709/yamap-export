@@ -28,7 +28,7 @@ from .api import (USER_AGENT, YamapClient, YamapError, parse_activity_id,
 from .exporters import (details_txt, flat_record, iso_date, markdown,
                         photo_filename, photos_txt, slugify, to_json)
 from .gpx import GpxUnavailable, download_gpx, has_track
-from .photos import download_photo
+from .photos import PhotoUnavailable, download_photo
 from .verify import print_report, verify_archive
 
 
@@ -119,7 +119,8 @@ def export_activity(client: YamapClient, activity_id: int, outdir: str,
                 except ValueError as e:  # nothing to download
                     tqdm.write(f"  photo {fname} of {activity_id}: {e}")
                     break
-                except (requests.RequestException, OSError) as e:
+                except (requests.RequestException, PhotoUnavailable,
+                        OSError) as e:
                     if attempt == 2:
                         tqdm.write(f"  photo {fname} of {activity_id} failed "
                                    f"after retries: {e}")
