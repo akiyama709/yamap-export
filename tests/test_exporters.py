@@ -16,7 +16,7 @@ from yamap_export.photos import _rational_dms, build_exif
 FIXTURE = {
     "id": 49680490,
     "title": "260713：京都五山送り火「船形」の船山",
-    "description": "近場の山に参りました。",
+    "description": "近場の山に参りました．",
     "start_at": 1783903374,   # 2026-07-13 (JST)
     "finish_at": 1783914976,  # same day
     "time_zone": 9,
